@@ -25,7 +25,14 @@
 // **********************************************************************************
 #include <Arduino.h>            // assumes Arduino IDE v1.0 or greater
 
-#define EMONTX4
+#define ATMEGA328
+
+#ifdef ATMEGA328
+  #define SSpin 10
+  #define MOSIpin 11
+  #define MISOpin 12
+  #define SCKpin 13
+#endif
 
 #ifdef EMONPI2
   #define SSpin PIN_PA7
@@ -40,7 +47,7 @@
   #define MISOpin PIN_PC1
   #define SCKpin PIN_PC2
 #endif
-
+  
 #define RF69_MAX_DATA_LEN         61
 #define CSMA_LIMIT               -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
 #define RF69_MODE_SLEEP           0<<2
@@ -78,7 +85,8 @@ class RFM69 {
     
     
     bool initialize(uint8_t freqBand, uint16_t ID, uint8_t networkID=1);
-    
+    void setAddress(uint16_t addr);
+    void sleep();
     bool canSend(); 
     void send(uint16_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK=false);
     bool sendWithRetry(uint16_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries=2, uint8_t retryWaitTime=RFM69_ACK_TIMEOUT);    

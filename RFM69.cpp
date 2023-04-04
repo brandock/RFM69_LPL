@@ -46,8 +46,10 @@ bool RFM69::initialize (uint8_t freqBand, uint16_t ID, uint8_t networkID) {
   uint32_t start = millis();
   uint8_t timeout = 50;
   do writeReg(REG_SYNCVALUE1, 0xAA); while (readReg(REG_SYNCVALUE1) != 0xaa && millis()-start < timeout);
+  if (millis()-start >= timeout) return false;
   start = millis();
   do writeReg(REG_SYNCVALUE1, 0x55); while (readReg(REG_SYNCVALUE1) != 0x55 && millis()-start < timeout);
+  if (millis()-start >= timeout) return false;
 
   const uint8_t configRegs [] = {
     0x01, 0x04, 
@@ -77,6 +79,10 @@ bool RFM69::initialize (uint8_t freqBand, uint16_t ID, uint8_t networkID) {
 
   configure(configRegs);
   
+  // Encryption is persistent between resets and can trip you up during debugging.
+  // Disable it during initialization so we always start from a known state.
+  encrypt(0);
+  
   uint8_t powerLevel = 25; // could be up to 31... -18 + dBm with PA0 = 7dBm
   if (powerLevel>31) powerLevel = 31;
   writeReg(0x11,RF_PALEVEL_PA0_ON | powerLevel); 
@@ -102,6 +108,18 @@ void RFM69::setMode (uint8_t newMode) {
   while (_mode == RF69_MODE_SLEEP && (readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
 
   _mode = newMode;
+}
+
+//put transceiver in sleep mode to save battery - to wake or resume receiving just call receiveDone()
+void RFM69::sleep() {
+  setMode(RF69_MODE_SLEEP);
+}
+
+//set this node's address
+void RFM69::setAddress(uint16_t addr)
+{
+  _address = addr;
+  writeReg(REG_NODEADRS, _address); //unused in packet mode
 }
 
 bool RFM69::canSend() 
@@ -334,19 +352,45 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
 }
 
 void RFM69::select() {
+  #ifdef ATMEGA328
+  PORTB &= ~(1 << PORTB2); // faster direct port manipulation, may not be necessary
+  #endif
+  
+  #ifdef EMONPI2
   digitalWriteFast(SSpin, 0);
+  #endif
+  
+  #ifdef EMONTX4
+  digitalWriteFast(SSpin, 0);
+  #endif
 }
 
 void RFM69::unselect() {
+  #ifdef ATMEGA328
+  PORTB |= (1 << PORTB2); // faster direct port manipulation, may not be necessary
+  #endif
+  
+  #ifdef EMONPI2
   digitalWriteFast(SSpin, 1);
+  #endif
+  
+  #ifdef EMONTX4
+  digitalWriteFast(SSpin, 1);
+  #endif
 }
 
 void RFM69::spi_init() {
   pinMode(SSpin, OUTPUT);
   pinMode(MOSIpin, OUTPUT);
+  pinMode(MISOpin, INPUT);
   pinMode(SCKpin, OUTPUT);
 
   unselect();
+  
+  #ifdef ATMEGA328
+  SPCR = _BV(SPE) | _BV(MSTR);
+  SPSR |= _BV(SPI2X);
+  #endif
   
   #ifdef EMONPI2
   PORTMUX.SPIROUTEA = SPI_MUX | (PORTMUX.SPIROUTEA & (~PORTMUX_SPI0_gm));
@@ -361,21 +405,29 @@ void RFM69::spi_init() {
   #endif
 }
 
-uint8_t RFM69::spi_transfer (uint8_t data) {
-  asm volatile("nop");
+uint8_t RFM69::spi_transfer (uint8_t out) {  
+  #ifdef ATMEGA328
+  SPDR = out;
+  while ((SPSR & (1<<SPIF)) == 0)
+    ;
+  return SPDR;
+  #endif
+  
   #ifdef EMONPI2
+  asm volatile("nop");
   SPI0.DATA = data;
   while ((SPI0.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
   return SPI0.DATA;                             // read data back
+  return 0;
   #endif
        
   #ifdef EMONTX4
+  asm volatile("nop");
   SPI1.DATA = data;
   while ((SPI1.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
   return SPI1.DATA;                             // read data back
-  #endif
-  
   return 0;
+  #endif
 }
 
 void RFM69::configure (const uint8_t* p) {
