@@ -25,15 +25,7 @@
 // **********************************************************************************
 #include <Arduino.h>            // assumes Arduino IDE v1.0 or greater
 
-#define ATMEGA328
-
-#ifdef ATMEGA328
-  #define SSpin 10
-  #define MOSIpin 11
-  #define MISOpin 12
-  #define SCKpin 13
-#endif
-
+/*
 #ifdef EMONPI2
   #define SSpin PIN_PA7
   #define MOSIpin PIN_PA4
@@ -47,6 +39,8 @@
   #define MISOpin PIN_PC1
   #define SCKpin PIN_PC2
 #endif
+*/  
+  
   
 #define RF69_MAX_DATA_LEN         61
 #define CSMA_LIMIT               -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
@@ -85,6 +79,7 @@ class RFM69 {
     
     
     bool initialize(uint8_t freqBand, uint16_t ID, uint8_t networkID=1);
+    void setPins (uint8_t _SSpin, uint8_t _MOSIpin, uint8_t _MISOpin, uint8_t _SCKpin);
     void setAddress(uint16_t addr);
     void sleep();
     bool canSend(); 
@@ -116,5 +111,11 @@ class RFM69 {
     void configure (const uint8_t* p);
     void receiveBegin();
     uint8_t _address;
-    uint8_t _retrycount;
+    uint8_t _retrycount; 
+        
+    uint8_t SSpin = 10;
+    uint8_t MOSIpin = 11;
+    uint8_t MISOpin = 12;
+    uint8_t SCKpin = 13;
+    uint8_t SPI_PORT = 0;  
 };

@@ -96,6 +96,21 @@ bool RFM69::initialize (uint8_t freqBand, uint16_t ID, uint8_t networkID) {
   return true;
 }
 
+void RFM69::setPins (uint8_t _SSpin, uint8_t _MOSIpin, uint8_t _MISOpin, uint8_t _SCKpin) {
+  SSpin = _SSpin;
+  MOSIpin = _MOSIpin;
+  MISOpin = _MISOpin;
+  SCKpin = _SCKpin;
+  
+  #ifdef __AVR_DB__
+  if (MOSIpin==PIN_PA4 && MISOpin==PIN_PA5 && SCKpin==PIN_PA6) {
+    SPI_PORT = 0;
+  } else if (MOSIpin==PIN_PC0 && MISOpin==PIN_PC1 && SCKpin==PIN_PC2) {
+    SPI_PORT = 1;
+  }
+  #endif
+}
+
 void RFM69::setMode (uint8_t newMode) {
 
   if (newMode == _mode)
@@ -352,29 +367,21 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
 }
 
 void RFM69::select() {
-  #ifdef ATMEGA328
+  #ifdef __AVR_ATmega328P__
   PORTB &= ~(1 << PORTB2); // faster direct port manipulation, may not be necessary
   #endif
   
-  #ifdef EMONPI2
-  digitalWriteFast(SSpin, 0);
-  #endif
-  
-  #ifdef EMONTX4
+  #ifdef __AVR_DB__
   digitalWriteFast(SSpin, 0);
   #endif
 }
 
 void RFM69::unselect() {
-  #ifdef ATMEGA328
+  #ifdef __AVR_ATmega328P__
   PORTB |= (1 << PORTB2); // faster direct port manipulation, may not be necessary
   #endif
   
-  #ifdef EMONPI2
-  digitalWriteFast(SSpin, 1);
-  #endif
-  
-  #ifdef EMONTX4
+  #ifdef __AVR_DB__
   digitalWriteFast(SSpin, 1);
   #endif
 }
@@ -387,45 +394,43 @@ void RFM69::spi_init() {
 
   unselect();
   
-  #ifdef ATMEGA328
+  #ifdef __AVR_ATmega328P__
   SPCR = _BV(SPE) | _BV(MSTR);
   SPSR |= _BV(SPI2X);
   #endif
   
-  #ifdef EMONPI2
-  PORTMUX.SPIROUTEA = SPI_MUX | (PORTMUX.SPIROUTEA & (~PORTMUX_SPI0_gm));
-  SPI0.CTRLB |= (SPI_SSD_bm);
-  SPI0.CTRLA |= (SPI_ENABLE_bm | SPI_MASTER_bm);
-  #endif
-       
-  #ifdef EMONTX4
-  PORTMUX.SPIROUTEA = SPI_MUX | (PORTMUX.SPIROUTEA & (~PORTMUX_SPI1_gm));
-  SPI1.CTRLB |= (SPI_SSD_bm);
-  SPI1.CTRLA |= (SPI_ENABLE_bm | SPI_MASTER_bm);
+  #ifdef __AVR_DB__
+  if (SPI_PORT==0) {
+    PORTMUX.SPIROUTEA = SPI_MUX | (PORTMUX.SPIROUTEA & (~PORTMUX_SPI0_gm));
+    SPI0.CTRLB |= (SPI_SSD_bm);
+    SPI0.CTRLA |= (SPI_ENABLE_bm | SPI_MASTER_bm);
+  } else {
+    PORTMUX.SPIROUTEA = SPI_MUX | (PORTMUX.SPIROUTEA & (~PORTMUX_SPI1_gm));
+    SPI1.CTRLB |= (SPI_SSD_bm);
+    SPI1.CTRLA |= (SPI_ENABLE_bm | SPI_MASTER_bm);
+  }
   #endif
 }
 
 uint8_t RFM69::spi_transfer (uint8_t out) {  
-  #ifdef ATMEGA328
+  #ifdef __AVR_ATmega328P__
   SPDR = out;
   while ((SPSR & (1<<SPIF)) == 0)
     ;
   return SPDR;
   #endif
   
-  #ifdef EMONPI2
+  #ifdef __AVR_DB__
   asm volatile("nop");
-  SPI0.DATA = data;
-  while ((SPI0.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
-  return SPI0.DATA;                             // read data back
-  return 0;
-  #endif
-       
-  #ifdef EMONTX4
-  asm volatile("nop");
-  SPI1.DATA = data;
-  while ((SPI1.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
-  return SPI1.DATA;                             // read data back
+  if (SPI_PORT==0) {
+    SPI0.DATA = data;
+    while ((SPI0.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
+    return SPI0.DATA;                             // read data back
+  } else {
+    SPI1.DATA = data;
+    while ((SPI1.INTFLAGS & SPI_RXCIF_bm) == 0);  // wait for complete send
+    return SPI1.DATA;                             // read data back
+  }
   return 0;
   #endif
 }
