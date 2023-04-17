@@ -372,7 +372,11 @@ void RFM69::select() {
   #endif
   
   #ifdef __AVR_DB__
-  digitalWriteFast(SSpin, 0);
+  if (SSpin==PIN_PB5) {
+    digitalWriteFast(PIN_PB5, 0);
+  } else if (SSpin==PIN_PA7) {
+    digitalWriteFast(PIN_PA7, 0);
+  }
   #endif
 }
 
@@ -382,7 +386,11 @@ void RFM69::unselect() {
   #endif
   
   #ifdef __AVR_DB__
-  digitalWriteFast(SSpin, 1);
+  if (SSpin==PIN_PB5) {
+    digitalWriteFast(PIN_PB5, 1);
+  } else if (SSpin==PIN_PA7) {
+    digitalWriteFast(PIN_PA7, 0);
+  }
   #endif
 }
 
@@ -412,9 +420,9 @@ void RFM69::spi_init() {
   #endif
 }
 
-uint8_t RFM69::spi_transfer (uint8_t out) {  
+uint8_t RFM69::spi_transfer (uint8_t data) {  
   #ifdef __AVR_ATmega328P__
-  SPDR = out;
+  SPDR = data;
   while ((SPSR & (1<<SPIF)) == 0)
     ;
   return SPDR;
