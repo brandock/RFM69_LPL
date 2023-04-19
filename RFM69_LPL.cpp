@@ -111,6 +111,10 @@ void RFM69::setPins (uint8_t _SSpin, uint8_t _MOSIpin, uint8_t _MISOpin, uint8_t
   #endif
 }
 
+void RFM69::setAddress(uint16_t ID) {
+  _address = ID;
+}
+
 void RFM69::setMode (uint8_t newMode) {
 
   if (newMode == _mode)
