@@ -24,23 +24,6 @@
 // and copyright notices in any redistribution of this code
 // **********************************************************************************
 #include <Arduino.h>            // assumes Arduino IDE v1.0 or greater
-
-/*
-#ifdef EMONPI2
-  #define SSpin PIN_PA7
-  #define MOSIpin PIN_PA4
-  #define MISOpin PIN_PA5
-  #define SCKpin PIN_PA6
-#endif
-     
-#ifdef EMONTX4
-  #define SSpin PIN_PB5
-  #define MOSIpin PIN_PC0
-  #define MISOpin PIN_PC1
-  #define SCKpin PIN_PC2
-#endif
-*/  
-  
   
 #define RF69_MAX_DATA_LEN         61
 #define CSMA_LIMIT               -90 // upper RX signal sensitivity threshold in dBm for carrier sense access
@@ -111,7 +94,7 @@ class RFM69 {
     void configure (const uint8_t* p);
     void receiveBegin();
     uint8_t _address;
-    uint8_t _retrycount; 
+    uint8_t _retrycount;
         
     uint8_t SSpin = 10;
     uint8_t MOSIpin = 11;
