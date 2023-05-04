@@ -389,7 +389,7 @@ void RFM69::unselect() {
   if (SSpin==PIN_PB5) {
     digitalWriteFast(PIN_PB5, 1);
   } else if (SSpin==PIN_PA7) {
-    digitalWriteFast(PIN_PA7, 0);
+    digitalWriteFast(PIN_PA7, 1);
   }
   #endif
 }
