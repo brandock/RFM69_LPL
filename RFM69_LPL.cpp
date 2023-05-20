@@ -372,11 +372,23 @@ void RFM69::select() {
   #endif
   
   #ifdef __AVR_DB__
-  if (SSpin==PIN_PB5) {
+    #ifdef PIN_PB5 //PIN_PB5 is specific to DB48 and not defined on DB28
+    if (SSpin==PIN_PB5) {
     digitalWriteFast(PIN_PB5, 0);
-  } else if (SSpin==PIN_PA7) {
+    }
+    #endif
+    if (SSpin==PIN_PA7) {
     digitalWriteFast(PIN_PA7, 0);
-  }
+    }
+    else if (SSpin==PIN_PC3) {
+    digitalWriteFast(PIN_PC3, 0);
+    }
+  #endif
+
+  #ifdef __AVR_ATtinyX4__
+    if (SSpin==PIN_PB1) {
+    digitalWrite(PIN_PB1, 0);
+    }
   #endif
 }
 
@@ -386,11 +398,23 @@ void RFM69::unselect() {
   #endif
   
   #ifdef __AVR_DB__
-  if (SSpin==PIN_PB5) {
-    digitalWriteFast(PIN_PB5, 1);
-  } else if (SSpin==PIN_PA7) {
-    digitalWriteFast(PIN_PA7, 1);
-  }
+    #ifdef PIN_PB5  //PIN_PB5 is specific to DB48 and not defined on DB28
+    if (SSpin==PIN_PB5) {
+      digitalWriteFast(PIN_PB5, 1);
+    }
+    #endif
+    if (SSpin==PIN_PA7) {
+      digitalWriteFast(PIN_PA7, 1);
+    } 
+    else if (SSpin==PIN_PC3) {
+      digitalWriteFast(PIN_PC3, 1);
+    }
+  #endif
+
+  #ifdef __AVR_ATtinyX4__
+    if (SSpin==PIN_PB1) {
+    digitalWrite(PIN_PB1, 1);
+    }
   #endif
 }
 
@@ -418,6 +442,10 @@ void RFM69::spi_init() {
     SPI1.CTRLA |= (SPI_ENABLE_bm | SPI_MASTER_bm);
   }
   #endif
+  
+  #ifdef __AVR_ATtinyX4__
+    USICR = bit(USIWM0);
+  #endif
 }
 
 uint8_t RFM69::spi_transfer (uint8_t data) {  
@@ -441,6 +469,29 @@ uint8_t RFM69::spi_transfer (uint8_t data) {
   }
   return 0;
   #endif
+
+  #ifdef __AVR_ATtinyX4__
+    USIDR = data;
+      byte v1 = bit(USIWM0) | bit(USITC);
+      byte v2 = bit(USIWM0) | bit(USITC) | bit(USICLK);
+    #if F_CPU <= 5000000
+      //unroll if clock is under 2.5 MHz
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+      USICR = v1; USICR = v2;
+    #else
+      for (uint8_t i = 0; i < 8; ++i) {
+        USICR = v1;
+        USICR = v2;
+      }
+    #endif
+    return USIDR;
+  #endif
 }
 
 void RFM69::configure (const uint8_t* p) {
@@ -452,3 +503,5 @@ void RFM69::configure (const uint8_t* p) {
     p += 2;
   }
 }
+
+
